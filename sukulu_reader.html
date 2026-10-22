@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#24282b">
+<title>Folio — Bibliothèque de lecture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--ink:#24282b;--ink2:#343a3e;--muted:#777b7d;--line:#e5e0d8;--paper:#f6f3ed;--white:#fffdfa;--accent:#d76b43;--accent-soft:#f7e3d9;--olive:#879078;--shadow:0 12px 32px #25201a10}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;border:1px solid transparent;border-radius:8px;padding:10px 13px;background:#ece8e1;color:var(--ink);font-weight:650}
+button:hover{filter:brightness(.97)}
+button.primary{background:var(--accent);color:white}
+button.ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+button.danger{background:#f5dfd9;color:#843c30}
+button.on{background:var(--accent-soft);color:#8e452d;border-color:#efc7b5}
+.real-file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.app{min-height:100vh;display:grid;grid-template-columns:235px minmax(0,1fr)}
+aside{background:var(--ink);color:#f6f1e9;padding:25px 15px;display:flex;flex-direction:column;gap:25px}
+.brand{display:flex;align-items:center;gap:11px;padding:0 9px}
+.brandmark{width:39px;height:39px;border-radius:9px;background:var(--accent);display:grid;place-items:center;font-size:21px;color:white}
+.brand strong{display:block;font-size:19px;letter-spacing:-.4px}
+.brand small{color:#b8b8b2;font-size:10px;letter-spacing:2px}
+.nav-label{font-size:10px;letter-spacing:1.7px;color:#9fa19e;padding:0 12px;margin-bottom:-15px}
+.nav{display:grid;gap:5px}
+.nav button{background:transparent;color:#d6d5d0;text-align:left;display:flex;gap:12px;align-items:center;padding:12px;border-radius:8px;font-weight:550}
+.nav button.active,.nav button:hover{background:#ffffff14;color:white}
+.nav .ico{width:20px;text-align:center;font-size:17px}
+.side-bottom{margin-top:auto;color:#9fa19e;font-size:12px;padding:10px}
+.main{min-width:0}
+.topbar{height:70px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fffdf9eF;position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.crumb{font-size:13px;color:var(--muted)}
+.top-actions{display:flex;gap:9px;align-items:center}
+.content{padding:32px;max-width:1500px;margin:auto}
+.view{display:none}.view.active{display:block}
+.eyebrow{font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:800}
+.heading{font-size:clamp(28px,3vw,40px);letter-spacing:-1.4px;margin:7px 0}
+.sub{color:var(--muted);margin:0 0 27px}
+.hero{background:var(--ink);color:#fffaf2;border-radius:12px;padding:29px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:28px}
+.hero h2{font-size:25px;margin:8px 0}
+.hero p{margin:0;color:#d3d0c9;max-width:520px}
+.hero .eyebrow{color:#ef9b79}
+.hero-art{font-size:65px;color:var(--accent);padding:0 25px;display:flex;align-items:center}
+.hero-art.has-img{padding:0 10px 0 25px}
+.hero-art img{height:130px;width:auto;border-radius:4px;box-shadow:0 8px 24px #0006;display:block}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:25px 0 15px}
+.section-head h2{font-size:18px;margin:0}
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:17px}
+.book{background:var(--white);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.book:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.cover{aspect-ratio:3/4;background:linear-gradient(140deg,#d98461,#9d4f37);display:flex;align-items:center;justify-content:center;color:white;font-size:42px;position:relative;overflow:hidden}
+.cover:after{content:'';position:absolute;inset:12px;border:1px solid #ffffff55;border-radius:2px}
+.cover.taupe{background:linear-gradient(140deg,#777c6d,#444a40)}
+.cover.cream{background:linear-gradient(140deg,#e6d6bb,#b6a080);color:#544438}
+.cover.blue{background:linear-gradient(140deg,#8a9a9c,#43585e)}
+.cover.has-img{background:#e9e5de}
+.cover.has-img:after{display:none}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;display:block;background:white}
+.cover.has-img:before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;box-shadow:inset 0 0 0 1px #0000001a,inset 7px 0 9px -7px #0000004d}
+.book-info{padding:14px}
+.book-info h3{font-size:15px;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book-info p{font-size:12px;color:var(--muted);margin:0 0 12px}
+.progress{height:3px;background:#ece8e0;border-radius:8px;overflow:hidden}
+.progress span{display:block;height:100%;background:var(--accent);width:0}
+.progress-label{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px}
+.empty{border:1px dashed #c9c2b8;border-radius:10px;padding:35px;text-align:center;color:var(--muted)}
+.empty .big{font-size:35px;margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+.stat{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:17px}
+.stat strong{display:block;font-size:25px}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* ===== Espace de lecture ===== */
+body.reading .content{padding:14px 20px}
+.reader-shell{height:calc(100vh - 98px);height:calc(100dvh - 98px);min-height:420px;display:flex;flex-direction:column;gap:10px;background:var(--paper)}
+.reader-shell:fullscreen{height:100%;padding:12px}
+.reader-bar{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:8px 10px;flex:none}
+.titlebox{flex:1;min-width:0}
+.reader-title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar-group{display:flex;align-items:center;gap:6px}
+.reader-bar button{padding:8px 11px}
+#zoomLabel{min-width:58px;padding:8px 6px;font-size:12px}
+.reader-body{flex:1;min-height:0;position:relative;display:flex;overflow:hidden;border-radius:10px}
+.stage-wrap{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;background:#e6e2dc;border-radius:10px;overflow:hidden}
+.pdf-stage{flex:1;min-height:0;overflow:auto;display:flex;padding:20px;overscroll-behavior:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.stage-msg{margin:auto;color:#777;text-align:center;padding:40px}
+.page-wrap{position:relative;background:white;box-shadow:0 5px 25px #0002;flex:none;margin:auto}
+.page-wrap.enter{animation:pgin .18s ease-out}
+@keyframes pgin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.page-wrap canvas{display:block}
+.textLayer{position:absolute;inset:0;overflow:hidden;opacity:1;line-height:1;user-select:text;-webkit-user-select:text}
+.textLayer span,.textLayer br{position:absolute;color:transparent;white-space:pre;transform-origin:0 0;cursor:text}
+.textLayer ::selection{background:#e7a27e88}
+.mark-layer{position:absolute;inset:0;pointer-events:none}
+.mark-rect{position:absolute;background:#f4d66a80;border-bottom:2px solid #d4a72d;mix-blend-mode:multiply}
+.nav-arrow{position:absolute;top:calc(50% - 30px);width:52px;height:52px;border-radius:50%;padding:0;background:#24282bd9;color:#fff;display:grid;place-items:center;z-index:5;box-shadow:0 6px 18px #0003;transition:transform .15s,background .15s,opacity .15s}
+.nav-arrow.prev{left:14px}.nav-arrow.next{right:14px}
+.nav-arrow:hover{background:var(--accent);filter:none;transform:scale(1.08)}
+.nav-arrow:disabled{opacity:.25;cursor:default;transform:none;background:#24282bd9}
+.pager{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--white);border-top:1px solid var(--line);flex:none}
+.pager .pbtn{display:flex;align-items:center;gap:6px;padding:10px 16px;font-size:14px}
+.pager .pbtn.js-next{background:var(--accent);color:#fff}
+.pager button:disabled{opacity:.35;cursor:default}
+.pager .slider{flex:1;min-width:60px;accent-color:var(--accent);height:24px;cursor:pointer}
+.pageinfo{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap}
+.pageinfo input{width:60px;border:1px solid var(--line);border-radius:7px;padding:7px;background:white;text-align:center}
+.sel-pop{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:none;gap:6px;background:var(--ink);padding:6px;border-radius:10px;z-index:6;box-shadow:0 8px 24px #0004}
+.sel-pop.show{display:flex}
+.sel-pop button{background:#ffffff1a;color:#fff;padding:8px 12px;font-size:13px;white-space:nowrap}
+.sel-pop button:hover{background:var(--accent);filter:none}
+.reader-side{position:absolute;top:0;right:0;bottom:0;width:min(350px,100%);background:var(--white);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;z-index:8;transform:translateX(calc(100% + 14px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s;box-shadow:-10px 0 30px #25201a1f}
+.reader-side.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.side-head{display:flex;align-items:center;border-bottom:1px solid var(--line);flex:none}
+.side-tabs{display:flex;flex:1}
+.side-tabs button{flex:1;border-radius:0;background:transparent;padding:13px 6px;font-size:12px;border:0;border-bottom:2px solid transparent}
+.side-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.side-close{background:transparent;padding:10px 14px;border:0}
+.side-pane{padding:15px;display:none;flex:1;min-height:0;overflow:auto}
+.side-pane.active{display:block}
+.side-pane h3{font-size:14px;margin:0 0 12px}
+.side-pane textarea{width:100%;min-height:100px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fcfbf7}
+.side-pane input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;margin-bottom:8px}
+.quote-prev{display:none;align-items:flex-start;gap:8px;background:var(--accent-soft);border-radius:8px;padding:9px 10px;margin-bottom:8px;font-size:12px;color:#6b4a3c}
+.quote-prev.show{display:flex}
+.quote-prev span{flex:1;font-style:italic;max-height:80px;overflow:auto}
+.quote-prev button{padding:2px 7px;font-size:11px;background:transparent;border-color:#e3b9a5}
+.note-item,.bookmark-item{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:9px;background:#fffdfa}
+.note-item small,.bookmark-item small{color:var(--muted);font-size:11px}
+.note-item p{font-size:13px;white-space:pre-wrap;margin:7px 0}
+.item-actions{display:flex;gap:6px;margin-top:8px}
+.item-actions button{font-size:11px;padding:6px 8px}
+.notice{font-size:12px;color:var(--muted);line-height:1.5}
+.warn{display:none;background:#f5dfd9;color:#843c30;border:1px solid #e8bfb3;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;line-height:1.5}
+
+.library-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.search{padding:11px 13px;border:1px solid var(--line);border-radius:8px;background:white;min-width:180px;flex:1}
+.file-label{display:inline-flex;align-items:center;gap:8px}
+.list-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid var(--line)}
+.list-row:last-child{border-bottom:0}
+.list-row h3{font-size:14px;margin:0 0 3px}
+.list-row p{font-size:12px;color:var(--muted);margin:0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:11px 17px;border-radius:8px;z-index:40;box-shadow:var(--shadow);display:none;max-width:90vw}
+body.reading .toast{bottom:90px}
+.modal{position:fixed;inset:0;background:#211c18a8;z-index:50;display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+.modal-card{background:var(--paper);padding:24px;border-radius:12px;width:min(500px,100%)}
+.modal-card h2{margin-top:0}
+.modal-card p{color:var(--muted);font-size:13px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.mobile-menu{display:none}
+.tag{font-size:10px;background:var(--accent-soft);color:#8e452d;padding:5px 8px;border-radius:5px}
+
+@media(max-width:1000px){
+.app{grid-template-columns:75px minmax(0,1fr)}
+aside{padding:20px 9px;align-items:center}
+.brand{padding:0}
+.brandtext,.nav-label,.nav button .navtext,.side-bottom{display:none}
+.nav{width:100%}
+.nav button{justify-content:center;padding:13px 5px}
+.nav button .ico{width:auto}
+}
+@media(max-width:700px){.nav-arrow{display:none}}
+@media(max-width:600px){
+.app{display:block}
+aside{position:fixed;z-index:15;bottom:0;left:0;right:0;height:65px;display:flex;flex-direction:row;justify-content:space-around;padding:6px 8px;gap:0;border-top:1px solid #ffffff22}
+.brand,.nav-label,.side-bottom{display:none}
+.nav{display:flex;justify-content:space-around;gap:0;width:100%}
+.nav button{padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:10px}
+.nav button .navtext{display:block}
+.nav button .ico{font-size:18px}
+.main{padding-bottom:65px}
+.topbar{height:60px;padding:0 14px}
+.content{padding:20px 14px}
+.top-actions .tag{display:none}
+.hero{padding:19px}
+.hero-art{display:none}
+.stats{gap:8px}
+.stat{padding:12px}
+.stat strong{font-size:20px}
+.book-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.book-info{padding:11px}
+.list-row{align-items:flex-start}
+.hide-sm{display:none}
+/* lecture immersive sur mobile : on masque la barre du haut et la navigation du bas */
+body.reading aside,body.reading .topbar{display:none}
+body.reading .main{padding-bottom:0}
+body.reading .content{padding:8px}
+.reader-shell{height:calc(100vh - 16px);height:calc(100dvh - 16px);min-height:0;gap:8px}
+.reader-bar{flex-wrap:wrap;padding:7px}
+.reader-bar .tools{flex-basis:100%;justify-content:space-between}
+.reader-bar .tools button{flex:1}
+.reader-bar .tools #zoomLabel{flex:1.3}
+.eyebrow{font-size:9px}
+.pdf-stage{padding:8px}
+.pager{flex-wrap:wrap;padding:8px 10px;gap:8px}
+.pager .slider{order:-1;flex-basis:100%}
+.pager .pbtn{flex:1;justify-content:center;padding:12px 8px}
+.pageinfo{flex:none}
+.sel-pop{top:8px}
+}
+</style></head>
+<body><div class="app">
+<aside><div class="brand"><div class="brandmark">▤</div><div class="brandtext"><strong>Folio</strong><small>READING SPACE</small></div></div><div class="nav-label">ESPACE PERSONNEL</div><nav class="nav"><button class="active" data-view="home"><span class="ico">⌂</span><span class="navtext">Accueil</span></button><button data-view="library"><span class="ico">▤</span><span class="navtext">Ma bibliothèque</span></button><button data-view="notes"><span class="ico">✎</span><span class="navtext">Mes notes</span></button><button data-view="bookmarks"><span class="ico">⚑</span><span class="navtext">Marque-pages</span></button><button data-view="settings"><span class="ico">⚙</span><span class="navtext">Paramètres</span></button></nav><div class="side-bottom">Lire. Comprendre. Retenir.<br>Version 1.1 · Local</div></aside>
+<div class="main"><header class="topbar"><div class="crumb" id="breadcrumb">Espace de lecture / Accueil</div><div class="top-actions"><span class="tag">VOTRE BIBLIOTHÈQUE</span><input id="importTop" class="real-file-input" type="file" accept="application/pdf,.pdf" multiple><button class="primary" type="button" data-pick="importTop">＋ Importer un PDF</button></div></header>
+<main class="content">
+<div id="storageWarn" class="warn" role="alert"></div>
+<section class="view active" id="view-home"><div class="eyebrow">VOTRE ESPACE DE LECTURE</div><h1 class="heading">Chaque livre, à sa place.</h1><p class="sub">Reprenez votre lecture là où vous l'avez laissée. Vos notes, surlignages et marque-pages vous attendent.</p><div class="hero"><div><div class="eyebrow">VOTRE PROCHAINE PAGE</div><h2 id="heroTitle">La lecture commence ici.</h2><p id="heroText">Importez un PDF pour construire votre bibliothèque personnelle et retrouver automatiquement votre progression.</p><div style="margin-top:17px"><input id="importHero" class="real-file-input" type="file" accept="application/pdf,.pdf" multiple><button class="primary" type="button" data-pick="importHero">＋ Ajouter mon premier livre</button></div></div><div class="hero-art" id="heroArt">▤</div></div><div class="stats"><div class="stat"><strong id="statBooks">0</strong><span>Livres importés</span></div><div class="stat"><strong id="statNotes">0</strong><span>Notes enregistrées</span></div><div class="stat"><strong id="statMarks">0</strong><span>Marque-pages</span></div></div><div class="section-head"><h2>Reprendre la lecture</h2><button class="ghost" data-goto="library">Toute la bibliothèque →</button></div><div id="recentBooks" class="book-grid"></div><div class="section-head"><h2>Récemment ajoutés</h2></div><div id="newBooks" class="book-grid"></div></section>
+<section class="view" id="view-library"><div class="eyebrow">COLLECTION PERSONNELLE</div><h1 class="heading">Ma bibliothèque</h1><p class="sub">Tous vos PDF réunis au même endroit.</p><div class="library-toolbar"><input id="bookSearch" class="search" placeholder="Rechercher un livre…"><input id="importLibrary" class="real-file-input" type="file" accept="application/pdf,.pdf" multiple><button class="primary" type="button" data-pick="importLibrary">＋ Importer des livres</button></div><div id="libraryList" class="book-grid" style="margin-top:22px"></div></section>
+<section class="view" id="view-notes"><div class="eyebrow">VOTRE PENSÉE EN MARGE</div><h1 class="heading">Mes notes</h1><p class="sub">Retrouvez toutes vos notes, classées par livre et par page.</p><div id="allNotes"></div></section>
+<section class="view" id="view-bookmarks"><div class="eyebrow">REPRENDRE AU BON ENDROIT</div><h1 class="heading">Marque-pages</h1><p class="sub">Vos passages importants et vos points de reprise.</p><div id="allBookmarks"></div></section>
+<section class="view" id="view-settings"><div class="eyebrow">VOTRE ESPACE, VOS RÈGLES</div><h1 class="heading">Paramètres</h1><p class="sub">Gérez le stockage local et vos données de lecture.</p><div class="stat" style="max-width:700px;margin-bottom:16px"><h3>Stockage et sauvegarde</h3><p class="notice">Les PDF, la progression, les notes, les marque-pages et les surlignages sont conservés dans ce navigateur sur cet appareil. Ils ne sont pas automatiquement synchronisés avec vos autres appareils.</p><p class="notice" id="storageStatus" style="margin-top:8px"></p><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:15px"><button id="exportData" class="primary">Exporter ma sauvegarde</button><input id="importBackup" class="real-file-input" type="file" accept="application/json,.json"><button type="button" data-pick="importBackup">Importer une sauvegarde</button></div></div><div class="stat" style="max-width:700px"><h3>Effacer les données</h3><p class="notice">Cette action supprime la bibliothèque et les annotations enregistrées dans ce navigateur.</p><button id="clearData" class="danger">Effacer toutes les données</button></div></section>
+
+<section class="view" id="view-reader">
+<div class="reader-shell" id="readerShell">
+ <div class="reader-bar">
+  <button class="ghost" data-goto="library" title="Retour à la bibliothèque">← <span class="hide-sm">Bibliothèque</span></button>
+  <div class="titlebox"><div class="eyebrow">EN COURS DE LECTURE</div><div class="reader-title" id="readerTitle">Aucun livre ouvert</div></div>
+  <div class="toolbar-group tools">
+   <button id="zoomOut" title="Dézoomer">−</button>
+   <button id="zoomLabel" class="ghost" title="Ajuster à l'écran">100%</button>
+   <button id="zoomIn" title="Zoomer">＋</button>
+   <button id="saveBookmark" title="Marquer / retirer le marque-page de cette page">⚑</button>
+   <button id="fullScreen" title="Plein écran">⛶</button>
+   <button id="notesBtn" title="Notes, marques et surlignages">✎ <span class="hide-sm">Notes</span></button>
+  </div>
+ </div>
+ <div class="reader-body">
+  <div class="stage-wrap">
+   <button class="nav-arrow prev js-prev" aria-label="Page précédente" title="Page précédente (←)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+   <button class="nav-arrow next js-next" aria-label="Page suivante" title="Page suivante (→)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+   <div class="sel-pop" id="selPop"><button id="highlightBtn">🖍 Surligner</button><button id="noteSelectionBtn">✎ Noter</button></div>
+   <div class="pdf-stage" id="pdfStage"><div class="stage-msg">Ouvrez un livre depuis votre bibliothèque.</div></div>
+   <div class="pager">
+    <button class="pbtn js-prev" aria-label="Page précédente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Précédent</button>
+    <input type="range" id="pageSlider" class="slider" min="1" max="1" value="1" aria-label="Aller à la page">
+    <div class="pageinfo"><input id="pageInput" type="number" min="1" value="1" aria-label="Numéro de page"><span id="pageTotal">/ 0</span></div>
+    <button class="pbtn js-next" aria-label="Page suivante">Suivant<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+   </div>
+  </div>
+  <div class="reader-side" id="readerSide">
+   <div class="side-head"><div class="side-tabs"><button class="active" data-pane="notesPane">Notes</button><button data-pane="marksPane">Marques</button><button data-pane="highlightsPane">Surlignages</button></div><button class="side-close" id="sideClose" aria-label="Fermer le panneau">✕</button></div>
+   <div class="side-pane active" id="notesPane"><h3>Nouvelle note</h3><div class="quote-prev" id="quotePrev"><span id="quoteText"></span><button id="quoteClear" type="button">Retirer</button></div><input id="noteTitle" type="text" placeholder="Titre (facultatif)"><textarea id="noteBody" placeholder="Écrivez votre idée, une question ou un résumé…"></textarea><button id="saveNote" class="primary" style="width:100%;margin-top:8px">Enregistrer la note</button><p class="notice" style="margin-top:10px">La note sera associée à la page actuelle et au texte sélectionné, le cas échéant.</p><div class="section-head"><h3>Notes de cette page</h3></div><div id="pageNotes"></div></div>
+   <div class="side-pane" id="marksPane"><h3>Marque-pages du livre</h3><button id="saveBookmark2" class="primary" style="width:100%;margin-bottom:12px">＋ Marquer cette page</button><div id="pageBookmarks"></div></div>
+   <div class="side-pane" id="highlightsPane"><h3>Surlignages du livre</h3><p class="notice">Sélectionnez une phrase dans le PDF puis choisissez « Surligner ».</p><div id="pageHighlights"></div></div>
+  </div>
+ </div>
+</div>
+</section>
+</main></div></div><div id="toast" class="toast"></div><div id="modal" class="modal"><div class="modal-card"><h2 id="modalTitle">Confirmation</h2><p id="modalText"></p><div class="modal-actions"><button id="modalCancel" class="ghost">Annuler</button><button id="modalConfirm" class="danger">Confirmer</button></div></div></div>
+<script>
+(()=>{'use strict';
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=id=>document.getElementById(id);
+let db=null,activeBookId=null,pdfDoc=null,currentPage=1,zoom=1,renderToken=0,shownPage=0;
+let selectedText='',selectedRects=[],pendingQuote='',curLayer=null,curMark=null,curWrap=null,keepSel=false,selTimer=null;
+const memory={books:[]};
+const colors=['','taupe','cream','blue'];
+const isReading=()=>$('view-reader').classList.contains('active');
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.style.display='none',2600)}
+
+/* ---------- Stockage (inchangé) ---------- */
+function openDB(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window)){reject(Error('IndexedDB indisponible'));return}const req=indexedDB.open('FolioReaderDB',1);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('books'))d.createObjectStore('books',{keyPath:'id'});};req.onsuccess=()=>{db=req.result;resolve(db)};req.onerror=()=>reject(req.error)})}
+function tx(mode='readonly'){return db.transaction('books',mode).objectStore('books')}
+function dbGetAll(){return new Promise((res,rej)=>{const r=tx().getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+function dbPut(book){return new Promise((res,rej)=>{const r=tx('readwrite').put(book);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function dbDelete(id){return new Promise((res,rej)=>{const r=tx('readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function getBook(){return memory.books.find(b=>b.id===activeBookId)}
+function normalize(b){if(!b.notes)b.notes=[];if(!b.bookmarks)b.bookmarks=[];if(!b.highlights)b.highlights=[];return b}
+// La progression de lecture est enregistrée en différé (évite de réécrire tout le PDF à chaque page tournée).
+const dirty=new Set();let saveTimer=null;
+function flushSaves(){clearTimeout(saveTimer);saveTimer=null;for(const b of dirty)dbPut(b).catch(()=>toast('Erreur de sauvegarde locale.'));dirty.clear()}
+function saveBook(now){const b=getBook();if(!b)return;dirty.add(b);if(now)flushSaves();else{clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,800)}}
+addEventListener('pagehide',flushSaves);document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSaves()});
+
+function safe(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function percent(b){return b.pages?Math.round((b.lastPage||1)/b.pages*100):0}
+
+/* ---------- Navigation ---------- */
+function showView(name){
+ if(name!=='reader'){closeDrawer();resetSel();if(document.fullscreenElement)document.exitFullscreen?.();flushSaves()}
+ document.body.classList.toggle('reading',name==='reader');
+ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+name));document.querySelectorAll('.nav button').forEach(v=>v.classList.toggle('active',v.dataset.view===name));
+ const labels={home:'Accueil',library:'Ma bibliothèque',notes:'Mes notes',bookmarks:'Marque-pages',settings:'Paramètres',reader:'Lecture'};
+ $('breadcrumb').textContent='Espace de lecture / '+(labels[name]||name);
+ if(name==='home'||name==='library')renderLibrary();if(name==='notes')renderAllNotes();if(name==='bookmarks')renderAllBookmarks();window.scrollTo(0,0)
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>showView(b.dataset.goto));
+
+/* ---------- Bibliothèque ---------- */
+function card(b){const i=memory.books.indexOf(b),c=colors[(i%3)+1];
+ const cover=b.cover?`<div class="cover has-img"><img src="${b.cover}" alt="Aperçu de ${safe(b.name)}" loading="lazy" decoding="async"></div>`:`<div class="cover ${c}">▤</div>`;
+ return `<article class="book" data-open="${b.id}">${cover}<div class="book-info"><h3 title="${safe(b.name)}">${safe(b.name)}</h3><p>${b.pages||'…'} pages · Page ${b.lastPage||1}</p><div class="progress"><span style="width:${percent(b)}%"></span></div><div class="progress-label"><span>${percent(b)}% lu</span><span>Ouvrir →</span></div></div></article>`}
+function bindCards(root){root.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openBook(el.dataset.open))}
+function renderLibrary(){const q=($('bookSearch')?.value||'').toLowerCase();const all=[...memory.books].sort((a,b)=>(b.updated||b.added||0)-(a.updated||a.added||0));
+ $('recentBooks').innerHTML=all.filter(b=>(b.lastPage||1)>1).slice(0,4).map(card).join('')||`<div class="empty" style="grid-column:1/-1"><div class="big">⌁</div>Aucune lecture en cours. Importez un livre ou ouvrez-en un pour commencer.</div>`;
+ $('newBooks').innerHTML=all.slice(0,4).map(card).join('')||'';
+ $('libraryList').innerHTML=all.filter(b=>b.name.toLowerCase().includes(q)).map(card).join('')||`<div class="empty" style="grid-column:1/-1"><div class="big">▤</div>${q?'Aucun livre correspondant.':'Votre bibliothèque est vide. Importez un fichier PDF pour commencer.'}</div>`;
+ [$('recentBooks'),$('newBooks'),$('libraryList')].forEach(bindCards);
+ $('statBooks').textContent=memory.books.length;$('statNotes').textContent=memory.books.reduce((n,b)=>n+(b.notes||[]).length,0);$('statMarks').textContent=memory.books.reduce((n,b)=>n+(b.bookmarks||[]).length,0);
+ const art=$('heroArt');
+ if(all.length){$('heroTitle').textContent=all[0].name;$('heroText').textContent=`Vous étiez à la page ${all[0].lastPage||1} sur ${all[0].pages||'?'} . Reprenez votre lecture sans chercher votre place.`;$('importHero').parentElement.querySelector('button').textContent='＋ Importer un autre livre';
+  if(all[0].cover){art.innerHTML=`<img src="${all[0].cover}" alt="">`;art.classList.add('has-img')}else{art.textContent='▤';art.classList.remove('has-img')}
+ }else{$('heroTitle').textContent='La lecture commence ici.';$('heroText').textContent='Importez un PDF pour construire votre bibliothèque personnelle et retrouver automatiquement votre progression.';art.textContent='▤';art.classList.remove('has-img')}}
+$('bookSearch').addEventListener('input',renderLibrary);
+
+/* ---------- Aperçus de couverture (1ʳᵉ page du PDF) ---------- */
+async function coverFromDoc(doc){
+ const page=await doc.getPage(1);const base=page.getViewport({scale:1});
+ const vp=page.getViewport({scale:Math.min(2,440/base.width)});
+ const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);
+ const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+ await page.render({canvasContext:ctx,viewport:vp}).promise;
+ const url=c.toDataURL('image/jpeg',.8);c.width=c.height=0;try{page.cleanup()}catch(e){}return url}
+// Génère les aperçus manquants (livres déjà importés avant cette version, ou aperçu raté à l'import)
+const coverTried=new Set();let coverBusy=false;
+async function ensureCovers(){
+ if(coverBusy||!window.pdfjsLib)return;coverBusy=true;
+ try{for(const b of [...memory.books]){
+  if(b.cover||coverTried.has(b.id)||!b.data)continue;coverTried.add(b.id);
+  try{const doc=await pdfjsLib.getDocument({data:b.data.slice(0)}).promise;if(!b.pages)b.pages=doc.numPages;b.cover=await coverFromDoc(doc);await doc.destroy();
+   if(memory.books.includes(b)){await dbPut(b);if(!isReading())renderLibrary()}}
+  catch(e){console.warn('Aperçu impossible pour',b.name,e)}
+ }}finally{coverBusy=false}
+}
+
+/* ---------- Import (inchangé, + aperçu) ---------- */
+async function importFiles(files){
+ if(!files||!files.length)return;
+ const queue=[...files];let imported=0;
+ for(const file of queue){
+  if(!(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf'))){toast('Fichier ignoré : sélectionnez un PDF.');continue}
+  try{
+   if(!file.size)throw Error('Le fichier est vide.');
+   const bytes=await file.arrayBuffer();
+   if(bytes.byteLength<5)throw Error('Le fichier est vide ou illisible.');
+   // Persist the PDF first. PDF.js is used only to count pages / build the cover, never as a prerequisite for import.
+   const existing=memory.books.find(b=>(b.filename||b.name+'.pdf')===file.name&&b.size===file.size);
+   if(existing){toast('« '+existing.name+' » est déjà dans la bibliothèque.');continue}
+   const b={id:uid(),name:file.name.replace(/\.pdf$/i,''),filename:file.name,size:file.size,data:bytes,pages:0,lastPage:1,added:Date.now(),updated:Date.now(),notes:[],bookmarks:[],highlights:[]};
+   await dbPut(b);memory.books.push(b);imported++;
+   if(window.pdfjsLib){try{const doc=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;b.pages=doc.numPages;try{b.cover=await coverFromDoc(doc)}catch(ce){console.warn('Aperçu non généré :',ce)}await doc.destroy();await dbPut(b)}catch(pdfErr){console.warn('PDF stocké, mais nombre de pages non détecté :',pdfErr)}}
+   toast('Livre importé : '+b.name);
+  }catch(e){console.error('Import PDF failed',e);toast('Import impossible : '+(e.message||'stockage indisponible')+'. Essayez un PDF moins volumineux ou libérez de l’espace.');}
+ }
+ renderLibrary();if(imported){try{localStorage.setItem('folio_seen','1')}catch(e){}showView('library');toast(imported+' livre(s) ajouté(s) à la bibliothèque.')}
+ ensureCovers();
+}
+// Reliable picker buttons: avoids nested <label><button> activation issues on Android/mobile browsers.
+document.querySelectorAll('[data-pick]').forEach(btn=>btn.addEventListener('click',()=>$(btn.dataset.pick).click()));
+['importTop','importHero','importLibrary'].forEach(id=>$(id).addEventListener('change',async e=>{const files=[...e.target.files];e.target.value='';await importFiles(files)}));
+
+/* ---------- Lecteur ---------- */
+function setPagerMeta(){const n=pdfDoc?pdfDoc.numPages:0;$('pageTotal').textContent='/ '+n;$('pageInput').max=n;$('pageSlider').max=Math.max(1,n)}
+async function openBook(id){const b=memory.books.find(x=>x.id===id);if(!b)return;
+ activeBookId=id;closeDrawer();resetSel();setQuote('');shownPage=0;showView('reader');
+ $('readerTitle').textContent=b.name;currentPage=Math.max(1,b.lastPage||1);zoom=1;
+ $('pdfStage').innerHTML='<div class="stage-msg">Chargement du document…</div>';
+ if(!window.pdfjsLib){$('pdfStage').innerHTML='<div class="empty" style="margin:auto">La bibliothèque PDF.js ne s’est pas chargée. Vérifiez votre connexion Internet puis rechargez la page.</div>';return}
+ try{if(pdfDoc)await pdfDoc.destroy();pdfDoc=await pdfjsLib.getDocument({data:b.data.slice(0)}).promise;b.pages=pdfDoc.numPages;setPagerMeta();currentPage=Math.min(currentPage,pdfDoc.numPages);await renderPage();saveBook()}
+ catch(e){console.error(e);$('pdfStage').innerHTML=`<div class="empty" style="margin:auto">Impossible d’afficher ce PDF.<br><small>${safe(e.message||'Erreur de lecture')}</small><p>Essayez de réimporter le fichier ou de vérifier qu’il n’est pas protégé par mot de passe.</p></div>`}}
+
+async function renderPage(){
+ if(!pdfDoc)return;const token=++renderToken;const b=getBook();if(!b)return;
+ try{
+  const page=await pdfDoc.getPage(currentPage);if(token!==renderToken)return;
+  const stage=$('pdfStage'),cs=getComputedStyle(stage);
+  // « 100 % » = la page entière tient dans l'écran, sans aucun défilement. Au-delà, seul le cadre de lecture défile.
+  const aw=Math.max(160,stage.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-1);
+  const ah=Math.max(160,stage.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-1);
+  const base=page.getViewport({scale:1});
+  const vp=page.getViewport({scale:Math.min(aw/base.width,ah/base.height)*zoom});
+  let ratio=Math.min(window.devicePixelRatio||1,2.5);const px=vp.width*vp.height;if(px*ratio*ratio>16e6)ratio=Math.max(.75,Math.sqrt(16e6/px));
+  const samePage=currentPage===shownPage;
+  const wrap=document.createElement('div');wrap.className='page-wrap'+(samePage?'':' enter');wrap.style.width=vp.width+'px';wrap.style.height=vp.height+'px';
+  const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width*ratio);canvas.height=Math.ceil(vp.height*ratio);canvas.style.width=vp.width+'px';canvas.style.height=vp.height+'px';wrap.appendChild(canvas);
+  const textLayer=document.createElement('div');textLayer.className='textLayer';textLayer.style.width=vp.width+'px';textLayer.style.height=vp.height+'px';wrap.appendChild(textLayer);
+  const markLayer=document.createElement('div');markLayer.className='mark-layer';wrap.appendChild(markLayer);
+  const params={canvasContext:canvas.getContext('2d'),viewport:vp};if(ratio!==1)params.transform=[ratio,0,0,ratio,0,0];
+  const [,content]=await Promise.all([page.render(params).promise,page.getTextContent()]);
+  if(token!==renderToken)return;
+  for(const item of content.items){if(!item.str)continue;const txm=pdfjsLib.Util.transform(vp.transform,item.transform);const span=document.createElement('span');span.textContent=item.str;span.style.left=txm[4]+'px';span.style.top=(txm[5]-Math.abs(txm[3])*0.8)+'px';span.style.fontSize=Math.hypot(txm[2],txm[3])+'px';span.style.fontFamily=item.fontName||'sans-serif';span.style.transform=`scaleX(${Math.hypot(txm[0],txm[1])/(Math.hypot(txm[2],txm[3])||1)})`;textLayer.appendChild(span)}
+  drawHighlights(markLayer);
+  // on garde le centre de vue quand on zoome, on revient en haut quand on change de page
+  const fx=stage.scrollWidth>stage.clientWidth?(stage.scrollLeft+stage.clientWidth/2)/stage.scrollWidth:.5;
+  const fy=stage.scrollHeight>stage.clientHeight?(stage.scrollTop+stage.clientHeight/2)/stage.scrollHeight:.5;
+  stage.replaceChildren(wrap);
+  if(samePage){stage.scrollLeft=fx*stage.scrollWidth-stage.clientWidth/2;stage.scrollTop=fy*stage.scrollHeight-stage.clientHeight/2}else{stage.scrollLeft=0;stage.scrollTop=0}
+  shownPage=currentPage;curLayer=textLayer;curMark=markLayer;curWrap=wrap;
+  syncUI(b);b.lastPage=currentPage;b.updated=Date.now();saveBook();renderReaderSide();
+ }catch(e){if(token===renderToken){console.error(e);toast('Erreur pendant le rendu de la page.')}}
+}
+function syncUI(b){
+ const n=pdfDoc?pdfDoc.numPages:1;
+ $('pageInput').value=currentPage;$('pageSlider').value=currentPage;$('zoomLabel').textContent=Math.round(zoom*100)+'%';
+ document.querySelectorAll('.js-prev').forEach(x=>x.disabled=currentPage<=1);
+ document.querySelectorAll('.js-next').forEach(x=>x.disabled=currentPage>=n);
+ $('saveBookmark').classList.toggle('on',!!(b.bookmarks||[]).some(m=>m.page===currentPage));
+}
+function drawHighlights(layer){const b=getBook();if(!b||!layer)return;layer.replaceChildren();(b.highlights||[]).filter(h=>h.page===currentPage).forEach(h=>(h.rects||[]).forEach(r=>{const d=document.createElement('div');d.className='mark-rect';d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';layer.appendChild(d)}))}
+
+/* ---------- Sélection de texte (souris + tactile) ---------- */
+function hidePop(){$('selPop').classList.remove('show')}
+function resetSel(){selectedText='';selectedRects=[];hidePop()}
+function clearSelection(){window.getSelection()?.removeAllRanges();resetSel()}
+document.addEventListener('selectionchange',()=>{
+ clearTimeout(selTimer);
+ selTimer=setTimeout(()=>{
+  if(!isReading())return;
+  const sel=window.getSelection();const txt=sel?sel.toString().trim():'';
+  if(!txt||!sel.rangeCount||!curLayer||!curLayer.isConnected||!curLayer.contains(sel.anchorNode)){if(keepSel)return;resetSel();return}
+  const box=curWrap.getBoundingClientRect();const rects=[];
+  for(const r of sel.getRangeAt(0).getClientRects()){if(r.width<1||r.height<1)continue;
+   const q={x:(r.left-box.left)/box.width,y:(r.top-box.top)/box.height,w:r.width/box.width,h:r.height/box.height};
+   if(rects.some(p=>Math.abs(p.x-q.x)<.002&&Math.abs(p.y-q.y)<.002&&Math.abs(p.w-q.w)<.002&&Math.abs(p.h-q.h)<.002))continue;
+   rects.push(q)}
+  selectedText=txt;selectedRects=rects;$('selPop').classList.add('show')
+ },120)});
+// garder la sélection quand on touche les boutons flottants
+const pop=$('selPop');pop.addEventListener('mousedown',e=>e.preventDefault());pop.addEventListener('pointerdown',()=>{keepSel=true;setTimeout(()=>keepSel=false,800)});
+
+/* ---------- Panneau latéral ---------- */
+function setPane(id){document.querySelectorAll('[data-pane]').forEach(x=>x.classList.toggle('active',x.dataset.pane===id));document.querySelectorAll('.side-pane').forEach(x=>x.classList.toggle('active',x.id===id))}
+function openDrawer(pane){if(pane)setPane(pane);$('readerSide').classList.add('open');$('notesBtn').classList.add('on')}
+function closeDrawer(){$('readerSide').classList.remove('open');$('notesBtn').classList.remove('on')}
+$('notesBtn').onclick=()=>$('readerSide').classList.contains('open')?closeDrawer():openDrawer();
+$('sideClose').onclick=closeDrawer;
+document.querySelectorAll('[data-pane]').forEach(btn=>btn.onclick=()=>setPane(btn.dataset.pane));
+function setQuote(t){pendingQuote=t||'';$('quotePrev').classList.toggle('show',!!pendingQuote);$('quoteText').textContent=pendingQuote?'« '+(pendingQuote.length>220?pendingQuote.slice(0,220)+'…':pendingQuote)+' »':''}
+$('quoteClear').onclick=()=>setQuote('');
+
+function renderReaderSide(){const b=getBook();if(!b)return;
+ $('pageNotes').innerHTML=(b.notes||[]).filter(n=>n.page===currentPage).map(noteCard).join('')||'<p class="notice">Aucune note sur cette page.</p>';
+ $('pageBookmarks').innerHTML=(b.bookmarks||[]).map(m=>`<div class="bookmark-item"><strong>Page ${m.page}</strong><br><small>${safe(m.label||'Marque-page')} · ${new Date(m.date).toLocaleDateString('fr-FR')}</small><div class="item-actions"><button data-jump="${m.page}">Aller à la page</button><button class="danger" data-delmark="${m.id}">Retirer</button></div></div>`).join('')||'<p class="notice">Aucun marque-page enregistré.</p>';
+ $('pageHighlights').innerHTML=(b.highlights||[]).map(h=>`<div class="note-item"><small>Page ${h.page}</small><p>${safe(h.text)}</p><div class="item-actions"><button data-jump="${h.page}">Voir</button><button class="danger" data-delhighlight="${h.id}">Supprimer</button></div></div>`).join('')||'<p class="notice">Aucun surlignage enregistré.</p>';
+ bindSideActions()}
+function noteCard(n){return `<div class="note-item"><strong>${safe(n.title||'Note sans titre')}</strong><br><small>Page ${n.page}${n.quote?' · Texte cité':''}</small>${n.quote?`<p style="color:#6b775f;font-style:italic">« ${safe(n.quote)} »</p>`:''}<p>${safe(n.body)}</p><div class="item-actions"><button data-editnote="${n.id}">Modifier</button><button class="danger" data-delnote="${n.id}">Supprimer</button></div></div>`}
+function bindSideActions(){
+ document.querySelectorAll('[data-jump]').forEach(x=>x.onclick=()=>{goPage(+x.dataset.jump);if(innerWidth<=700)closeDrawer()});
+ document.querySelectorAll('[data-delmark]').forEach(x=>x.onclick=()=>{const b=getBook();b.bookmarks=b.bookmarks.filter(m=>m.id!==x.dataset.delmark);saveBook(true);renderReaderSide();syncUI(b)});
+ document.querySelectorAll('[data-delhighlight]').forEach(x=>x.onclick=()=>{const b=getBook();b.highlights=b.highlights.filter(h=>h.id!==x.dataset.delhighlight);saveBook(true);drawHighlights(curMark);renderReaderSide()});
+ document.querySelectorAll('[data-delnote]').forEach(x=>x.onclick=()=>{const b=getBook();b.notes=b.notes.filter(n=>n.id!==x.dataset.delnote);saveBook(true);renderReaderSide()});
+ document.querySelectorAll('[data-editnote]').forEach(x=>x.onclick=()=>{const b=getBook(),n=b.notes.find(n=>n.id===x.dataset.editnote);if(!n)return;$('noteTitle').value=n.title||'';$('noteBody').value=n.body;$('saveNote').dataset.edit=n.id;$('noteBody').focus()})}
+
+/* ---------- Pagination, zoom, raccourcis ---------- */
+function goPage(n){if(!pdfDoc)return;const p=Math.max(1,Math.min(pdfDoc.numPages,Math.round(n)||1));if(p!==currentPage)clearSelection();currentPage=p;renderPage()}
+document.querySelectorAll('.js-prev').forEach(x=>x.onclick=()=>goPage(currentPage-1));
+document.querySelectorAll('.js-next').forEach(x=>x.onclick=()=>goPage(currentPage+1));
+$('pageInput').addEventListener('change',()=>goPage(+$('pageInput').value));
+$('pageInput').addEventListener('focus',e=>e.target.select());
+$('pageSlider').addEventListener('input',e=>{$('pageInput').value=e.target.value});
+$('pageSlider').addEventListener('change',e=>goPage(+e.target.value));
+function setZoom(z){zoom=Math.round(Math.max(.5,Math.min(3.5,z))*100)/100;renderPage()}
+$('zoomOut').onclick=()=>setZoom(zoom/1.2);$('zoomIn').onclick=()=>setZoom(zoom*1.2);$('zoomLabel').onclick=()=>setZoom(1);
+$('saveBookmark').onclick=()=>{const b=getBook();if(!b)return;const ex=b.bookmarks.find(m=>m.page===currentPage);if(ex){b.bookmarks=b.bookmarks.filter(m=>m!==ex);toast('Marque-page retiré.')}else{b.bookmarks.push({id:uid(),page:currentPage,label:'Point de lecture',date:Date.now()});toast('Marque-page ajouté à la page '+currentPage)}saveBook(true);renderReaderSide();syncUI(b)};
+$('saveBookmark2').onclick=()=>{const b=getBook();if(!b)return;if(b.bookmarks.some(m=>m.page===currentPage)){toast('Cette page est déjà marquée.');return}b.bookmarks.push({id:uid(),page:currentPage,label:'Point de lecture',date:Date.now()});saveBook(true);renderReaderSide();syncUI(b);toast('Marque-page ajouté à la page '+currentPage)};
+document.addEventListener('keydown',e=>{
+ if(!isReading()||!pdfDoc||e.ctrlKey||e.metaKey||e.altKey)return;
+ const t=e.target;if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable)&&t.id!=='pageSlider')return;
+ if($('modal').classList.contains('show'))return;
+ const zoomed=zoom>1.02;
+ if(e.key==='PageDown'||(e.key==='ArrowRight'&&!zoomed)){goPage(currentPage+1);e.preventDefault()}
+ else if(e.key==='PageUp'||(e.key==='ArrowLeft'&&!zoomed)){goPage(currentPage-1);e.preventDefault()}
+ else if(e.key==='Home'){goPage(1);e.preventDefault()}
+ else if(e.key==='End'){goPage(pdfDoc.numPages);e.preventDefault()}
+ else if(e.key==='Escape'){closeDrawer()}
+});
+// Balayage tactile : glisser vers la gauche = page suivante (seulement si la page n'est pas zoomée)
+(()=>{const stage=$('pdfStage');let x0=0,y0=0,t0=0;
+ stage.addEventListener('touchstart',e=>{if(e.touches.length!==1){t0=0;return}x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
+ stage.addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0,dt=Date.now()-t0;t0=0;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||dt>700)return;
+  if(stage.scrollWidth>stage.clientWidth+2)return;
+  if((window.getSelection()?.toString()||'').trim())return;
+  goPage(currentPage+(dx<0?1:-1))},{passive:true})})();
+
+/* ---------- Annotations ---------- */
+$('highlightBtn').onclick=()=>{const b=getBook();if(!b)return;if(!selectedText||!selectedRects.length){toast('Sélectionnez d’abord un passage dans le PDF.');return}
+ b.highlights.push({id:uid(),page:currentPage,text:selectedText,rects:selectedRects,date:Date.now()});saveBook(true);drawHighlights(curMark);renderReaderSide();clearSelection();toast('Passage surligné.')};
+$('noteSelectionBtn').onclick=()=>{if(!selectedText){toast('Sélectionnez d’abord un passage.');return}setQuote(selectedText);clearSelection();openDrawer('notesPane');$('noteBody').focus()};
+$('saveNote').onclick=()=>{const b=getBook();if(!b)return;const body=$('noteBody').value.trim();if(!body){toast('Écrivez une note avant de l’enregistrer.');return}
+ const editId=$('saveNote').dataset.edit;let n=editId?(b.notes||[]).find(n=>n.id===editId):null;
+ if(n){n.title=$('noteTitle').value.trim();n.body=body;n.page=currentPage;delete $('saveNote').dataset.edit}
+ else{b.notes.push({id:uid(),title:$('noteTitle').value.trim(),body,page:currentPage,quote:pendingQuote||'',date:Date.now()})}
+ saveBook(true);$('noteTitle').value='';$('noteBody').value='';setQuote('');renderReaderSide();toast('Note enregistrée.')};
+
+/* ---------- Plein écran / redimensionnement ---------- */
+if(!document.documentElement.requestFullscreen)$('fullScreen').style.display='none';
+$('fullScreen').onclick=()=>{const el=$('readerShell');if(!document.fullscreenElement)el.requestFullscreen?.()?.catch(()=>{});else document.exitFullscreen?.()};
+document.addEventListener('fullscreenchange',()=>setTimeout(()=>{if(pdfDoc&&isReading())renderPage()},120));
+let rsT;window.addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(()=>{if(pdfDoc&&isReading())renderPage()},150)});
+
+/* ---------- Notes / marque-pages globaux ---------- */
+function renderAllNotes(){const arr=[];memory.books.forEach(b=>(b.notes||[]).forEach(n=>arr.push({b,n})));arr.sort((a,b)=>b.n.date-a.n.date);$('allNotes').innerHTML=arr.map(({b,n})=>`<div class="list-row"><div><h3>${safe(n.title||'Note sans titre')}</h3><p>${safe(b.name)} · Page ${n.page}</p><p style="margin-top:7px;white-space:pre-wrap">${safe(n.body)}</p></div><button data-open-note="${b.id}" data-page="${n.page}">Ouvrir</button></div>`).join('')||'<div class="empty"><div class="big">✎</div>Aucune note enregistrée pour le moment.</div>';document.querySelectorAll('[data-open-note]').forEach(x=>x.onclick=async()=>{await openBook(x.dataset.openNote);goPage(+x.dataset.page)})}
+function renderAllBookmarks(){const arr=[];memory.books.forEach(b=>(b.bookmarks||[]).forEach(m=>arr.push({b,m})));arr.sort((a,b)=>b.m.date-a.m.date);$('allBookmarks').innerHTML=arr.map(({b,m})=>`<div class="list-row"><div><h3>${safe(b.name)}</h3><p>Page ${m.page} · ${safe(m.label||'Marque-page')} · ${new Date(m.date).toLocaleDateString('fr-FR')}</p></div><button data-open-mark="${b.id}" data-page="${m.page}">Reprendre ici</button></div>`).join('')||'<div class="empty"><div class="big">⚑</div>Vous n’avez pas encore créé de marque-pages.</div>';document.querySelectorAll('[data-open-mark]').forEach(x=>x.onclick=async()=>{await openBook(x.dataset.openMark);goPage(+x.dataset.page)})}
+
+/* ---------- Données (inchangé) ---------- */
+function modal(title,msg,confirmText,onConfirm){$('modalTitle').textContent=title;$('modalText').textContent=msg;$('modalConfirm').textContent=confirmText;$('modal').classList.add('show');$('modalConfirm').onclick=()=>{$('modal').classList.remove('show');onConfirm()};$('modalCancel').onclick=()=>$('modal').classList.remove('show')}
+$('clearData').onclick=()=>modal('Effacer la bibliothèque ?', 'Tous les PDF, notes, surlignages et marque-pages seront supprimés de ce navigateur. Cette action est irréversible sans sauvegarde.', 'Tout effacer',async()=>{dirty.clear();clearTimeout(saveTimer);if(pdfDoc){await pdfDoc.destroy();pdfDoc=null}for(const b of memory.books)await dbDelete(b.id);memory.books=[];activeBookId=null;renderLibrary();showView('home');toast('Données locales effacées.')});
+$('exportData').onclick=()=>{flushSaves();const payload={version:1,exportedAt:new Date().toISOString(),books:memory.books.map(b=>({...b,data:Array.from(new Uint8Array(b.data))}))};const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='folio-reader-sauvegarde.json';a.click();URL.revokeObjectURL(a.href);toast('Sauvegarde exportée.')};
+$('importBackup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(!Array.isArray(obj.books))throw Error('Format invalide');for(const b of obj.books){if(Array.isArray(b.data))b.data=new Uint8Array(b.data).buffer;await dbPut(b)}memory.books=(await dbGetAll()).map(normalize);renderLibrary();toast('Sauvegarde restaurée.');ensureCovers()}catch(err){toast('Sauvegarde invalide ou illisible.')}e.target.value=''};
+
+async function checkStorage(ok){
+ const w=$('storageWarn'),st=$('storageStatus');let persisted=null;
+ try{if(navigator.storage&&navigator.storage.persisted)persisted=await navigator.storage.persisted()}catch(e){}
+ const msgs=[];
+ if(!ok)msgs.push('Le stockage local est indisponible ici (navigation privée, navigateur intégré à une appli, ou aperçu). Rien ne sera conservé après un rechargement : ouvrez le fichier dans Chrome ou Firefox.');
+ else if(location.origin==='null'||!/^(https?:|file:)$/.test(location.protocol))msgs.push('Cette page est ouverte dans un contexte isolé (aperçu ou visionneuse) : le stockage peut être effacé à chaque rechargement. Ouvrez le fichier directement dans votre navigateur.');
+ let seen=false;try{seen=localStorage.getItem('folio_seen')==='1'}catch(e){}
+ if(ok&&seen&&!memory.books.length)msgs.push('Une bibliothèque existait sur cet appareil mais elle est vide : le navigateur a effacé les données du site, ou le fichier est ouvert depuis un autre emplacement/adresse. Restaurez une sauvegarde (Paramètres) si vous en avez une.');
+ w.textContent=msgs.join(' ');w.style.display=msgs.length?'block':'none';
+ st.textContent='Stockage : '+(ok?'actif':'indisponible')+' · protégé contre l’effacement : '+(persisted===null?'inconnu':persisted?'oui':'non')+' · adresse : '+(location.protocol==='file:'?'fichier local':(location.host||location.protocol));
+}
+async function init(){
+ try{await openDB();memory.books=(await dbGetAll()).map(normalize);renderLibrary()}
+ catch(e){console.error(e);toast('Stockage local indisponible. Essayez un navigateur récent.');checkStorage(false);return}
+ try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
+ checkStorage(true);ensureCovers()
+}init();
+})();
+</script></body></html>
